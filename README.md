@@ -23,17 +23,20 @@ Una vez se han observado los datos, se procede a la limpieza de los mismos.
 
 Una vez realizado el análisis exploratorio de los datos, se ha procedido a realizar la limpieza del dataset:
 
+- Obtención de train y test mediante ```python train_test_split``` (función de la librería sklearn)
 - Eliminación de variables inservibles: PetID
 - Cambio de nombre de la variable target: AdoptionLikelihood -> target
 - Tratamiento de las variables: Categóricas -> numéricas (```pyhon pd.get_dummies()```)
 
 Una vez realizados estos cambios, el dataset se guarda limpio ```python(pet_adoption_data_clean_all)``` para su uso en el proceso de modelado.
 
-EXTRA: En este notebook, también se crea un DataFrame con datos hipotéticos para emplearlo tras la realización del modelo para que realice las predicciones de adopción de las mascotas o no.
-
 ### Análisis Exploratorio de Datos (EDA)
 
-En este paso, se procede a la observación detallada de las variables. Diferenciando entre variables categóricas y numéricas, se estudia:
+En este paso, se procede a la observación detallada de las variables. Diferenciando entre variables categóricas y numéricas, se estudia a partir de:
+
+```python
+train = pd.read_csv("../data/Raw/train_data_raw.csv")
+```
 
 - Análisis gráfico de las variables
 - Test de análisis de correlación de las variables con la variable "target"
@@ -48,14 +51,12 @@ Tras este análisis, es pertinente tomar la decisión de ver qué variables perm
 En primer lugar, para proceder con el entrenamiento del modelo de Regresión Logística, se importan los datos limpios creados en el notebook de limpieza. 
 
 ```python
-df_adop_all = pd.read_csv("../data/Clean/pet_adoption_data_clean_all.csv")
+train = pd.read_csv("../data/Clean/train_data_clean.csv")
 ```
 
 Proceso del modelo:
 
-1. Separación de las variables train y test: Esto se realiza para dividir el dataset entre datos de entrenamiento y datos de test, para verificar el funcionamiento del modelo, y si es preciso realizar ajustes.
-
-Es importante, determinar que los datos de entrenamiento y los de test, a su vez se separan en dos: 
+1. Separación de las variables train y test en dos: 
 
 - Por un lado, las variables que ayudarán a la predicción de la variable objetivo (X_train y X_test).
 - Por otro lado, la propia variable objetivo (y_train e y_test).
@@ -80,6 +81,7 @@ from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 scaler.fit(X_train[numericas])
 ```
+Este escalado, será guardado para usarlo posteriormente en el notebook "main".
 
 3. Transformación de Train y Test
 
@@ -182,6 +184,7 @@ model_set = [log_reg_all, tree_clf, rf_clf, xgb_clf, lgb_clf]
 
 model_names = ["LogisticRegression","DecisionTree","Random Forest","XGBoost","LightGBM"]
 ```
+
 2. Entrenamiento de los modelos nuevos
 
 ```python
@@ -218,7 +221,7 @@ for model_name, valores in metricas_cv.items():
     print(f"Model <{model_name}>, Accuracy_CV: {np.mean(valores)}")
 print(f"El ganador es {ganador}")
 ```
-En este caso, el modelo ganador es XGBoost, por lo que las predicciones se llevarán a cabo con este modelo.
+En este caso, el modelo ganador es Random Forest, por lo que las predicciones se llevarán a cabo con este modelo.
 
 4. Optimización de los hiperparámetros del modelo ganador
 
@@ -261,40 +264,34 @@ ConfusionMatrixDisplay.from_predictions(y_test, y_pred)
 Para salvar los modelos ya entrenados, se eplica la librería "joblib". En este caso, se muestra el guardado del modelo que va a ser empleado. Para ello:
 
 - ```python import joblib```
-- ```python joblib.dump(xgb_clf, "../scr_models/XGBoost_modelo_main.pkl")````
+- ```python joblib.dump(rf_clf, "../scr_models/RandomForest_model.pkl")````
 
 ### Prueba del modelo
 
-Para proceder con la prueba del modelo, se importa el dataset de predicción creado en el notebook de limpieza de datos:
+Para proceder con la prueba del modelo, se procede a la creación de datos sintéticos para contrastarlos con el modelo. Posterior a la creación (y guardado para emplearlo en el notebook "main"), se procede a la predicción:
 
 ```python
-df_predicciones_scaled.to_csv("../data/Clean/predicciones_escaladas.csv", index = False)
-```
-
-A continuación se procede a realizar la predicción:
-
-```python
-pred = xgb_clf.predict(df_predicciones_scaled)
-proba = xgb_clf.predict_proba(df_predicciones_scaled)[:, 1]
+pred = rf_clf.predict(df_datos_prueba)
+proba = rf_clf.predict_proba(df_datos_prueba)[:, 1]
 
 pred, proba
 ```
 
 ## Interpretación de los resultados
 
-Finalmente, para terminar con el proyecto, se deben interpretar los datos obtenidos y relacionarlos con el estudio realizado. En este caso la predicción obtenida, es que únicamente el último animal de la predicción sería adoptado.
+Finalmente, para terminar con el proyecto, se deben interpretar los datos obtenidos y relacionarlos con el estudio realizado. En este caso la predicción obtenida, es que únicamente el primer y último animal de la predicción serían adoptados.
 
 Las probabilidades de adopción de cada animal serían:
 
 | Probabilidad de adopción | Animal | Peso | Vacunación | Sano | Días en el refugio | Cuota | Dueño previo | Edad (años) | Color del pelaje | Tamaño |
 | ------------------------ | ------ | ---- | ---------- | ---- | ------------------ | ----- | ------------ | ---- | ---------------- | ------ |
-| 22,96 % | Conejo | 10 kg | Sí | Sí | 12 | 100 | No | 5 | Marrón | Grande |
-| 6,24 % | Gato Siamés | 7 kg | No | No | 40 | 250 | Sí | 3 | Naranja | Mediano |
-| 1,88 % | Periquito | 1 kg | Sí | No | 26 | 70 | Sí | 6 | Gris | Pequeño |
-| 4,84 % | Gato Persa | 20 kg | Sí | No | 32 | 300 | Sí | 3 | Marrón | Grande |
-| 10,14 % | Perro Labrador | 35 kg | Sí | No | 400 | 120 | Sí | 13 | Negro | Grande |
-| 21,30 % | Conejo | 15 kg | Sí | Sí | 28 | 57 | No | 10 | Blanco | Grande |
-| 14,87% | Gato Persa | 2 kg | Sí | Sí | 3 | 250 | No | 6 (meses) | Marrón | Grande |
-| 9,97 % | Perro Poodle | 3 kg | Sí | No | 20 | 232 | No | 7 (meses) | Marrón | Mediano |
-| 14,56 % | Perro Golden Retriever | 45 kg | Sí | Sí | 50 | 452 | No | 6 | Naranja | Pequeño |
-| 91,61 % | Perro Labrador | 27 kg | Sí | Sí | 45 | 179 | Sí | 2.5 | Marrón | Mediano |
+| 80,33 % | Conejo | 10 kg | Sí | Sí | 12 | 100 | No | 5 | Marrón | Grande |
+| 21 % | Gato Siamés | 7 kg | No | No | 40 | 250 | Sí | 3 | Naranja | Mediano |
+| 10,33 % | Periquito | 1 kg | Sí | No | 26 | 70 | Sí | 6 | Gris | Pequeño |
+| 20,33 % | Gato Persa | 20 kg | Sí | No | 32 | 300 | Sí | 3 | Marrón | Grande |
+| 38,66 % | Perro Labrador | 35 kg | Sí | No | 400 | 120 | Sí | 13 | Negro | Grande |
+| 29,33 % | Conejo | 15 kg | Sí | Sí | 28 | 57 | No | 10 | Blanco | Grande |
+| 18 % | Gato Persa | 2 kg | Sí | Sí | 3 | 250 | No | 6 (meses) | Marrón | Grande |
+| 45 % | Perro Poodle | 3 kg | Sí | No | 20 | 232 | No | 7 (meses) | Marrón | Mediano |
+| 22 % | Perro Golden Retriever | 45 kg | Sí | Sí | 50 | 452 | No | 6 | Naranja | Pequeño |
+| 78 % | Perro Labrador | 27 kg | Sí | Sí | 45 | 179 | Sí | 2.5 | Marrón | Mediano |
